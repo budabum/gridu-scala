@@ -26,9 +26,15 @@ object Huffman {
 
 
   // Part 1: Basics
-  def weight(tree: CodeTree): Int = ??? // tree match ...
+  def weight(tree: CodeTree): Int = tree match {
+    case Fork(left, right, chars, w) => weight(left) + weight(right)
+    case Leaf(char, w) => w
+  }
 
-  def chars(tree: CodeTree): List[Char] = ??? // tree match ...
+  def chars(tree: CodeTree): List[Char] = tree match {
+    case Fork(left, right, cs, w) => chars(left) ++ chars(right)
+    case Leaf(char, w) => List(char)
+  }
 
   def makeCodeTree(left: CodeTree, right: CodeTree) =
     Fork(left, right, chars(left) ::: chars(right), weight(left) + weight(right))
@@ -70,7 +76,9 @@ object Huffman {
     * println("integer is  : "+ theInt)
     * }
     */
-  def times(chars: List[Char]): List[(Char, Int)] = ???
+  def times(chars: List[Char]): List[(Char, Int)] = {
+    chars.groupBy(identity).mapValues(s => s.size).toList
+  }
 
   /**
     * Returns a list of `Leaf` nodes for a given frequency table `freqs`.
@@ -79,12 +87,16 @@ object Huffman {
     * head of the list should have the smallest weight), where the weight
     * of a leaf is the frequency of the character.
     */
-  def makeOrderedLeafList(freqs: List[(Char, Int)]): List[Leaf] = ???
+  def makeOrderedLeafList(freqs: List[(Char, Int)]): List[Leaf] = {
+    freqs.sortBy(_._2).map(e => Leaf(e._1, e._2))
+  }
 
   /**
     * Checks whether the list `trees` contains only one single code tree.
     */
-  def singleton(trees: List[CodeTree]): Boolean = ???
+  def singleton(trees: List[CodeTree]): Boolean = {
+    trees.size == 1
+  }
 
   /**
     * The parameter `trees` of this function is a list of code trees ordered
@@ -98,7 +110,12 @@ object Huffman {
     * If `trees` is a list of less than two elements, that list should be returned
     * unchanged.
     */
-  def combine(trees: List[CodeTree]): List[CodeTree] = ???
+  def combine(trees: List[CodeTree]): List[CodeTree] = {
+    val h1 = trees.head
+    val h2 = trees.tail.head
+    val combinedLeaf = Fork(h1, h2, chars(h1)++chars(h2), weight(h1)+weight(h2))
+    combinedLeaf :: trees.tail.tail
+  }
 
   /**
     * This function will be called in the following way:
@@ -199,4 +216,30 @@ object Huffman {
     * and then uses it to perform the actual encoding.
     */
   def quickEncode(tree: CodeTree)(text: List[Char]): List[Bit] = ???
+
+  def main(args: Array[String]): Unit = {
+    println("START")
+
+    val str1 = "aabbacc"
+    val str2 = "list should be ordered by"
+    val list1 = times(str1.toList)
+    val list2 = times(str2.toList)
+    println(list1)
+    println(list2)
+    val ol1 = makeOrderedLeafList(list1)
+    val ol2 = makeOrderedLeafList(list2)
+
+    val t1 = Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5)
+    val t2 = Fork(Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5), Leaf('d', 4), List('a', 'b', 'd'), 9)
+
+    println(t1)
+    println(t2)
+
+    println(ol1)
+    println(combine(ol1))
+
+    println(ol2)
+    println(combine(ol2))
+
+  }
 }
