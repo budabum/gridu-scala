@@ -36,6 +36,16 @@ object Huffman {
     case Leaf(char, w) => List(char)
   }
 
+  def left(tree: CodeTree): CodeTree = tree match {
+    case Fork(leftTree, right, chars, weight) => leftTree
+    case Leaf(_, _) => throw new UnsupportedOperationException("Leaf.left")
+  }
+
+  def right(tree: CodeTree): CodeTree = tree match {
+    case Fork(left, rightTree, chars, weight) => rightTree
+    case Leaf(_, _) => throw new UnsupportedOperationException("Leaf.right")
+  }
+
   def makeCodeTree(left: CodeTree, right: CodeTree) =
     Fork(left, right, chars(left) ::: chars(right), weight(left) + weight(right))
 
@@ -134,7 +144,12 @@ object Huffman {
     * the example invocation. Also define the return type of the `until` function.
     *  - try to find sensible parameter names for `xxx`, `yyy` and `zzz`.
     */
-  def until(xxx: ???, yyy: ???)(zzz: ???): ??? = ???
+  def until(
+             isSingleton: (List[CodeTree]) => Boolean,
+             combiner: (List[CodeTree]) => List[CodeTree])(trees: List[CodeTree]): List[CodeTree] = {
+    if (isSingleton(trees)) trees
+    else until(isSingleton, combiner)(combiner(trees))
+  }
 
   /**
     * This function creates a code tree which is optimal to encode the text `chars`.
@@ -142,7 +157,9 @@ object Huffman {
     * The parameter `chars` is an arbitrary text. This function extracts the character
     * frequencies from that text and creates a code tree based on them.
     */
-  def createCodeTree(chars: List[Char]): CodeTree = ???
+  def createCodeTree(chars: List[Char]): CodeTree = {
+    until(singleton, combine)(makeOrderedLeafList(times(chars))).head
+  }
 
 
   // Part 3: Decoding
@@ -153,7 +170,31 @@ object Huffman {
     * This function decodes the bit sequence `bits` using the code tree `tree` and returns
     * the resulting list of characters.
     */
-  def decode(tree: CodeTree, bits: List[Bit]): List[Char] = ???
+  def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
+    def f(bs: List[Bit], t: CodeTree, cs: List[Char]): (List[Bit], List[Char]) = {
+      if(chars(t).size == 1) {
+//        println("== Found: " + chars(t).head)
+        (bs, cs ++ List(chars(t).head))
+      }
+      else{
+//        println("--"+bs.head)
+//        println("--=="+t)
+//        println("--=="+chars(t))
+        if (bs.head == 0) f(bs.tail, left(t), cs)
+        else f(bs.tail, right(t), cs)
+      }
+    }
+
+    def f1(bs1: List[Bit], cs1: List[Char]): List[Char] = {
+      val res = f(bs1, tree, cs1)
+      val bs = res._1
+      val cs = res._2
+      if(bs.isEmpty) cs
+      else f1(bs, cs)
+    }
+
+    f1(bits, List())
+  }
 
   /**
     * A Huffman coding tree for the French language.
@@ -180,7 +221,23 @@ object Huffman {
     * This function encodes `text` using the code tree `tree`
     * into a sequence of bits.
     */
-  def encode(tree: CodeTree)(text: List[Char]): List[Bit] = ???
+  def encode(tree: CodeTree)(text: List[Char]): List[Bit] = {
+    def f(c: Char, t: CodeTree, bs: List[Bit]): List[Bit] = {
+      if(chars(t).size == 1) {
+//        println("^^Encoding: " + c)
+//        println("^^==: " + bs)
+        bs
+      }
+      else {
+        def lt = left(t)
+        def rt = right(t)
+        if(chars(lt).contains(c)) f(c, lt, bs ++ List(0))
+        else f(c, rt, bs ++ List(1))
+      }
+    }
+
+    text.flatMap(e => f(e, tree, List()))
+  }
 
   // Part 4b: Encoding using code table
 
@@ -222,6 +279,7 @@ object Huffman {
 
     val str1 = "aabbacc"
     val str2 = "list should be ordered by"
+    val str3 = "zxc"
     val list1 = times(str1.toList)
     val list2 = times(str2.toList)
     println(list1)
@@ -235,11 +293,23 @@ object Huffman {
     println(t1)
     println(t2)
 
+    println("-------")
     println(ol1)
     println(combine(ol1))
+    println(until(singleton, combine)(ol1).head)
+    val ct1 = createCodeTree(str1.toList)
+    println(ct1)
+    println("-------")
 
-    println(ol2)
-    println(combine(ol2))
+    val ct3 = createCodeTree(str3.toList)
+    println(ct3)
+    val bits3 = encode(ct3)(str3.toList)
+    println(bits3)
+    println(decode(ct3, bits3))
 
+    val ct2 = createCodeTree(str2.toList)
+    val bits2_a = encode(ct2)("it should be border".toList)
+    println(bits2_a.size / 8)
+    println(decode(ct2, bits2_a))
   }
 }
