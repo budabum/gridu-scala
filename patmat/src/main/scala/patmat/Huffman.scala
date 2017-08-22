@@ -125,7 +125,7 @@ object Huffman {
     else {
       val h1 = trees.head
       val h2 = trees.tail.head
-      val combinedLeaf = Fork(h1, h2, chars(h1)++chars(h2), weight(h1)+weight(h2))
+      val combinedLeaf = Fork(h1, h2, (chars(h1)++chars(h2)).distinct, weight(h1)+weight(h2))
       combinedLeaf :: trees.tail.tail
     }
   }
@@ -175,7 +175,7 @@ object Huffman {
     */
   def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
     def f(bs: List[Bit], t: CodeTree, cs: List[Char]): (List[Bit], List[Char]) = {
-      if(chars(t).size == 1) {
+      if(chars(t).size == 1 || bs.isEmpty) {
 //        println("== Found: " + chars(t).head)
         (bs, cs ++ List(chars(t).head))
       }
@@ -196,7 +196,8 @@ object Huffman {
       else f1(bs, cs)
     }
 
-    f1(bits, List())
+    if(bits.isEmpty) List()
+    else f1(bits, List())
   }
 
   /**
@@ -225,6 +226,8 @@ object Huffman {
     * into a sequence of bits.
     */
   def encode(tree: CodeTree)(text: List[Char]): List[Bit] = {
+//    println(s"Tree:\n$tree\n\n")
+    println(s"TXT:\n${text.mkString}\n\n")
     def f(c: Char, t: CodeTree, bs: List[Bit]): List[Bit] = {
       if(chars(t).size == 1) {
 //        println("^^Encoding: " + c)
@@ -239,7 +242,9 @@ object Huffman {
       }
     }
 
-    text.flatMap(e => f(e, tree, List()))
+    val res = text.flatMap(e => f(e, tree, List()))
+//    println(s"RES:\n$res\n\n")
+    res
   }
 
   // Part 4b: Encoding using code table
@@ -271,7 +276,11 @@ object Huffman {
       }
       else{
         val ct1:CodeTable = chars(t).map( e => (e, if(chars(left(t)).contains(e)) List(0) else List(1)) )
-        mergeCodeTables(mergeCodeTables(ct, ct1), convert(left(t)))
+        mergeCodeTables(
+          mergeCodeTables(
+            mergeCodeTables(ct, ct1),
+            convert(left(t))),
+          convert(right(t)))
       }
     }
 
@@ -317,6 +326,7 @@ object Huffman {
     * and then uses it to perform the actual encoding.
     */
   def quickEncode(tree: CodeTree)(text: List[Char]): List[Bit] = {
+    println(new Throwable().printStackTrace(System.out))
     val table = convert(tree)
     text.flatMap(e => codeBits(table)(e))
   }
