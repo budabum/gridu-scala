@@ -121,10 +121,13 @@ object Huffman {
     * unchanged.
     */
   def combine(trees: List[CodeTree]): List[CodeTree] = {
-    val h1 = trees.head
-    val h2 = trees.tail.head
-    val combinedLeaf = Fork(h1, h2, chars(h1)++chars(h2), weight(h1)+weight(h2))
-    combinedLeaf :: trees.tail.tail
+    if (singleton(trees) || trees.isEmpty) trees
+    else {
+      val h1 = trees.head
+      val h2 = trees.tail.head
+      val combinedLeaf = Fork(h1, h2, chars(h1)++chars(h2), weight(h1)+weight(h2))
+      combinedLeaf :: trees.tail.tail
+    }
   }
 
   /**
@@ -212,7 +215,7 @@ object Huffman {
   /**
     * Write a function that returns the decoded secret
     */
-  def decodedSecret: List[Char] = ???
+  def decodedSecret: List[Char] = decode(frenchCode, secret)
 
 
   // Part 4a: Encoding using Huffman tree
@@ -247,7 +250,11 @@ object Huffman {
     * This function returns the bit sequence that represents the character `char` in
     * the code table `table`.
     */
-  def codeBits(table: CodeTable)(char: Char): List[Bit] = ???
+  def codeBits(table: CodeTable)(char: Char): List[Bit] = {
+    val mm: Map[Char, List[Bit]] = table.toMap
+//    println(mm)
+    mm(char)
+  }
 
   /**
     * Given a code tree, create a code table which contains, for every character in the
@@ -257,14 +264,51 @@ object Huffman {
     * a valid code tree that can be represented as a code table. Using the code tables of the
     * sub-trees, think of how to build the code table for the entire tree.
     */
-  def convert(tree: CodeTree): CodeTable = ???
+  def convert(tree: CodeTree): CodeTable = {
+    def f(t: CodeTree, ct: CodeTable): CodeTable = {
+      if(chars(t).size == 1){
+        ct
+      }
+      else{
+        val ct1:CodeTable = chars(t).map( e => (e, if(chars(left(t)).contains(e)) List(0) else List(1)) )
+        mergeCodeTables(mergeCodeTables(ct, ct1), convert(left(t)))
+      }
+    }
+
+    f(tree, List())
+  }
 
   /**
     * This function takes two code tables and merges them into one. Depending on how you
     * use it in the `convert` method above, this merge method might also do some transformations
     * on the two parameter code tables.
     */
-  def mergeCodeTables(a: CodeTable, b: CodeTable): CodeTable = ???
+  def mergeCodeTables(a: CodeTable, b: CodeTable): CodeTable = {
+    val ma: Map[Char, List[Bit]] = a.toMap
+    val mb: Map[Char, List[Bit]] = b.toMap
+    val mak = ma.keys.toList
+    val mbk = mb.keys.toList
+    val keys = (mak ++ mbk).distinct
+
+    def f(ks: List[Char], acc: Map[Char, List[Bit]]): Map[Char, List[Bit]] = {
+      if(ks.isEmpty) acc
+      else{
+        val k = ks.head
+        val res = if(ma.keys.toList.contains(k)){
+          if(mb.keys.toList.contains(k)){
+            acc + (k -> (ma(k) ++ mb(k)))
+          }
+          else acc + (k -> ma(k))
+        }
+        else{
+          acc + (k -> mb(k))
+        }
+        f(ks.tail, res)
+      }
+    }
+
+    f(keys, Map()).toList
+  }
 
   /**
     * This function encodes `text` according to the code tree `tree`.
@@ -272,44 +316,60 @@ object Huffman {
     * To speed up the encoding process, it first converts the code tree to a code table
     * and then uses it to perform the actual encoding.
     */
-  def quickEncode(tree: CodeTree)(text: List[Char]): List[Bit] = ???
+  def quickEncode(tree: CodeTree)(text: List[Char]): List[Bit] = {
+    val table = convert(tree)
+    text.flatMap(e => codeBits(table)(e))
+  }
 
   def main(args: Array[String]): Unit = {
     println("START")
 
     val str1 = "aabbacc"
-    val str2 = "list should be ordered by"
+//    val str2 = "list should be ordered by"
     val str3 = "zxc"
-    val list1 = times(str1.toList)
-    val list2 = times(str2.toList)
-    println(list1)
-    println(list2)
-    val ol1 = makeOrderedLeafList(list1)
-    val ol2 = makeOrderedLeafList(list2)
-
-    val t1 = Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5)
-    val t2 = Fork(Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5), Leaf('d', 4), List('a', 'b', 'd'), 9)
-
-    println(t1)
-    println(t2)
-
-    println("-------")
-    println(ol1)
-    println(combine(ol1))
-    println(until(singleton, combine)(ol1).head)
+//    val list1 = times(str1.toList)
+//    val list2 = times(str2.toList)
+//    println(list1)
+//    println(list2)
+//    val ol1 = makeOrderedLeafList(list1)
+//    val ol2 = makeOrderedLeafList(list2)
+//
+//    val t1 = Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5)
+//    val t2 = Fork(Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5), Leaf('d', 4), List('a', 'b', 'd'), 9)
+//
+//    println(t1)
+//    println(t2)
+//
+//    println("-------")
+//    println(combine(makeOrderedLeafList(times("a".toList))))
+//    println("-------")
+//    println(ol1)
+//    println(until(singleton, combine)(ol1).head)
     val ct1 = createCodeTree(str1.toList)
     println(ct1)
-    println("-------")
-
+//    println("-------")
+//
     val ct3 = createCodeTree(str3.toList)
     println(ct3)
     val bits3 = encode(ct3)(str3.toList)
     println(bits3)
     println(decode(ct3, bits3))
+//
+//    val ct2 = createCodeTree(str2.toList)
+//    val bits2_a = encode(ct2)("it should be border".toList)
+//    println(bits2_a.size / 8)
+//    println(decode(ct2, bits2_a))
+//
+//    println(decodedSecret)
 
-    val ct2 = createCodeTree(str2.toList)
-    val bits2_a = encode(ct2)("it should be border".toList)
-    println(bits2_a.size / 8)
-    println(decode(ct2, bits2_a))
+//    val cta1 = List(('a', List(0,0)), ('b', List(0,1)), ('c', List(0,0,1)))
+//    val cta1a = List(('a', List(0)), ('b', List(0)), ('c', List(0,0,1)))
+//    val cta1b = List(('a', List(0)), ('b', List(1)), ('d', List(0,1,1)))
+//    println(mergeCodeTables(cta1a, cta1b))
+    val cta1 = convert(ct1)
+    println(encode(ct3)(str3.toList))
+    println(quickEncode(ct3)(str3.toList))
+//    println(cta1)
+//    println(codeBits(cta1)('b'))
   }
 }
