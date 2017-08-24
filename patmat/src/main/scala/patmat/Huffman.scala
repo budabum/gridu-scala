@@ -120,12 +120,48 @@ object Huffman {
     * If `trees` is a list of less than two elements, that list should be returned
     * unchanged.
     */
+  def combine1(trees: List[CodeTree]): List[CodeTree] = {
+    def f(t: List[CodeTree], acc: List[CodeTree]): List[CodeTree] = {
+      println(s"F:IN: $t")
+      val h1 = t.head
+      if (t.tail.isEmpty) {
+        h1 :: acc
+      }
+      else {
+        val h2 = t.tail.head
+        val tt = t.tail.tail
+        val combinedLeaf = Fork(h1, h2, (chars(h1) ++ chars(h2)).distinct, weight(h1) + weight(h2))
+        val res = combinedLeaf :: acc
+        if (tt.isEmpty) res
+        else f(tt, res)
+      }
+    }
+
+    println(s"TREES: $trees")
+    if (singleton(trees) || trees.isEmpty) {
+      trees
+    }
+    else {
+      f(trees, List())
+    }
+  }
+
+  def combine2(trees: List[CodeTree]): List[CodeTree] = {
+    if (singleton(trees) || trees.isEmpty) trees
+    else {
+      val h2 = trees.head
+      val h1 = trees.tail.head
+      val combinedLeaf = Fork(h1, h2, (chars(h1) ++ chars(h2)).distinct, weight(h1) + weight(h2))
+      combinedLeaf :: trees.tail.tail
+    }
+  }
+
   def combine(trees: List[CodeTree]): List[CodeTree] = {
     if (singleton(trees) || trees.isEmpty) trees
     else {
       val h1 = trees.head
       val h2 = trees.tail.head
-      val combinedLeaf = Fork(h1, h2, (chars(h1)++chars(h2)).distinct, weight(h1)+weight(h2))
+      val combinedLeaf = Fork(h1, h2, (chars(h1) ++ chars(h2)).distinct, weight(h1) + weight(h2))
       combinedLeaf :: trees.tail.tail
     }
   }
@@ -148,6 +184,32 @@ object Huffman {
     *  - try to find sensible parameter names for `xxx`, `yyy` and `zzz`.
     */
   def until(
+             isSingleton: (List[CodeTree]) => Boolean,
+             combiner: (List[CodeTree]) => List[CodeTree])(trees: List[CodeTree]): List[CodeTree] = {
+    if (isSingleton(trees)) trees
+    else {
+      val div = 2
+//      val div = trees.size/2
+      val sum = trees.foldLeft(0)((a, b) => a + weight(b))
+      val middleW = sum /(trees.size-1)
+      def f(t:CodeTree):Boolean = {
+        weight(t) <= middleW
+      }
+      //      println(s"Size: ${trees.size}, Div: $div")
+      val slided: List[List[CodeTree]] = if(3 < trees.size) trees.sliding(div, div).toList else List(trees)
+//      val slided = trees.span(e => f(e))
+//      val combined = combiner(slided._1) ++ combiner(slided._2)
+      val combined = slided.flatMap(e => combiner(e))
+//      var modified = combined.sortBy(e => weight(e))
+//      println(s"M: ${trees.sliding(2,2).toList.map(e => combiner(e).head)}")
+//      val combined = combiner(trees)
+//      println(s"C: ${combined}")
+//      println(s"S: ${modified}")
+      until(isSingleton, combiner)(combined)
+    }
+  }
+
+  def until0(
              isSingleton: (List[CodeTree]) => Boolean,
              combiner: (List[CodeTree]) => List[CodeTree])(trees: List[CodeTree]): List[CodeTree] = {
     if (isSingleton(trees)) trees
@@ -227,7 +289,7 @@ object Huffman {
     */
   def encode(tree: CodeTree)(text: List[Char]): List[Bit] = {
 //    println(s"Tree:\n$tree\n\n")
-    println(s"TXT:\n${text.mkString}\n\n")
+//    println(s"TXT:\n${text.mkString}\n\n")
     def f(c: Char, t: CodeTree, bs: List[Bit]): List[Bit] = {
       if(chars(t).size == 1) {
 //        println("^^Encoding: " + c)
@@ -326,17 +388,40 @@ object Huffman {
     * and then uses it to perform the actual encoding.
     */
   def quickEncode(tree: CodeTree)(text: List[Char]): List[Bit] = {
-    println(new Throwable().printStackTrace(System.out))
+//    println(new Throwable().printStackTrace(System.out))
     val table = convert(tree)
     text.flatMap(e => codeBits(table)(e))
+  }
+
+  def testList = {
+    val zz = List(('a', 1), ('b', 2), ('s', 18), ('e', 18), ('o', 40), ('c', 2), ('z', 14))
+    val ol = makeOrderedLeafList(zz)
+    println(ol.size)
+    val sum = ol.foldLeft(0)((a, b) => a + weight(b))
+    val middleW = sum /2
+    println(s"MW: $middleW")
+    def f(t:CodeTree):Boolean = {
+      weight(t) < middleW
+    }
+    println(ol.foldLeft((List(), 0))((acc, e) =>
+      if (acc._2 < middleW)(acc._1, acc._2 + weight(e)) else (List(), 0)))
+//    println(ol.span(e => f(e))._1)
+//    println(ol.span(e => f(e))._2)
+//    val div = ol.size / 2
+//    println(ol.sliding(div, div).toList)
   }
 
   def main(args: Array[String]): Unit = {
     println("START")
 
-    val str1 = "aabbacc"
+//    testList
+//    System.exit(0)
+
+//    val str3 = "aabbaccxart7bac"
 //    val str2 = "list should be ordered by"
-    val str3 = "zxc"
+//    val str3 = "list should be ordered by"
+    val str3 = "Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source."
+//    val str3 = "zxc"
 //    val list1 = times(str1.toList)
 //    val list2 = times(str2.toList)
 //    println(list1)
@@ -344,26 +429,27 @@ object Huffman {
 //    val ol1 = makeOrderedLeafList(list1)
 //    val ol2 = makeOrderedLeafList(list2)
 //
-//    val t1 = Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5)
-//    val t2 = Fork(Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5), Leaf('d', 4), List('a', 'b', 'd'), 9)
-//
-//    println(t1)
-//    println(t2)
-//
 //    println("-------")
 //    println(combine(makeOrderedLeafList(times("a".toList))))
 //    println("-------")
 //    println(ol1)
 //    println(until(singleton, combine)(ol1).head)
-    val ct1 = createCodeTree(str1.toList)
-    println(ct1)
+//    val ct1 = createCodeTree(str1.toList)
+//    println(ct1)
 //    println("-------")
 //
     val ct3 = createCodeTree(str3.toList)
+    println(times(str3.toList))
+    println(makeOrderedLeafList(times(str3.toList)))
     println(ct3)
     val bits3 = encode(ct3)(str3.toList)
+    val bits3q = quickEncode(ct3)(str3.toList)
     println(bits3)
+    println(bits3.size)
+    println(bits3q)
+    println(bits3q.size)
     println(decode(ct3, bits3))
+    println(decode(ct3, bits3q))
 //
 //    val ct2 = createCodeTree(str2.toList)
 //    val bits2_a = encode(ct2)("it should be border".toList)
@@ -373,12 +459,6 @@ object Huffman {
 //    println(decodedSecret)
 
 //    val cta1 = List(('a', List(0,0)), ('b', List(0,1)), ('c', List(0,0,1)))
-//    val cta1a = List(('a', List(0)), ('b', List(0)), ('c', List(0,0,1)))
-//    val cta1b = List(('a', List(0)), ('b', List(1)), ('d', List(0,1,1)))
-//    println(mergeCodeTables(cta1a, cta1b))
-    val cta1 = convert(ct1)
-    println(encode(ct3)(str3.toList))
-    println(quickEncode(ct3)(str3.toList))
 //    println(cta1)
 //    println(codeBits(cta1)('b'))
   }
