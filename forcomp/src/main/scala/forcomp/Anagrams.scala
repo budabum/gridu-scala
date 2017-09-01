@@ -63,7 +63,12 @@ object Anagrams {
   }
 
   /** Returns all the anagrams of a given word. */
-  def wordAnagrams(word: Word): List[Word] = ???
+  def wordAnagrams(word: Word): List[Word] = {
+    dictionaryByOccurrences.get(wordOccurrences(word)) match {
+      case None => List()
+      case Some(value) => value
+    }
+  }
 
   /** Returns the list of all subsets of the occurrence list.
    *  This includes the occurrence itself, i.e. `List(('k', 1), ('o', 1))`
@@ -87,7 +92,18 @@ object Anagrams {
    *  Note that the order of the occurrence list subsets does not matter -- the subsets
    *  in the example above could have been displayed in some other order.
    */
-  def combinations(occurrences: Occurrences): List[Occurrences] = ???
+  def combinations(occurrences: Occurrences): List[Occurrences] = {
+    def f(acc:Occurrences): List[Occurrences] = {
+      for {
+        (chr, cnt) <- occurrences
+        n <- 0 to cnt
+      } yield (chr, n) :: acc
+    }
+
+    val all = f(List()).flatten
+    val combs = all.combinations(occurrences.size).toList
+    combs.map(os => os.filter(e => e._2 != 0).toMap.toList).distinct
+}
 
   /** Subtracts occurrence list `y` from occurrence list `x`.
    *
@@ -99,7 +115,13 @@ object Anagrams {
    *  Note: the resulting value is an occurrence - meaning it is sorted
    *  and has no zero-entries.
    */
-  def subtract(x: Occurrences, y: Occurrences): Occurrences = ???
+  def subtract(x: Occurrences, y: Occurrences): Occurrences = {
+    (x ++ y).sortBy(_._1).groupBy(_._1).map{
+      case(k, v) =>
+        if(v.size == 1) (k, v.head._2)
+        else(k, math.abs(v.head._2 - v.last._2))
+    }.filter(p => p._2 != 0).toList.sortBy(_._1)
+  }
 
   /** Returns a list of all anagram sentences of the given sentence.
    *
@@ -146,10 +168,14 @@ object Anagrams {
   def main(args: Array[String]): Unit = {
     val w1 = "banana"
     val w2 = "elephant"
+    val w3 = "art"
     val phrase1 = "Note: in case that the words of the sentence are in the dictionary, then the sentence is the anagram of itself, so it has to be returned in this list."
     val s1 = phrase1.split(" ").toList
 //    val s1 = List("We", "are", "the", "champions")
-    println(dictionaryByOccurrences(List(('a', 1), ('r', 1), ('t', 1))))
-//    println(dictionaryByOccurrences)
+//    println(dictionaryByOccurrences(List(('a', 1), ('r', 1), ('t', 1))))
+//    println(combinations(List(('a', 2), ('b', 2))))
+    val lis1 = List(('a', 1), ('b', 4), ('s',2), ('y',2))
+    val lis2 = List(('a', 1), ('b', 1), ('y',2))
+    println(subtract(lis1, lis2))
   }
 }
