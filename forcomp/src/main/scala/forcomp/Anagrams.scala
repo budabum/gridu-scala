@@ -107,7 +107,7 @@ object Anagrams {
 
     val all = f(List()).flatten
     val combs = all.combinations(occurrences.size).toList
-    combs.map(os => os.filter(e => e._2 != 0).toMap.toList).distinct
+    combs.map(os => os.filter(e => e._2 != 0).toMap.toList).distinct.map(_.sortBy(_._1))
 }
 
   /** Subtracts occurrence list `y` from occurrence list `x`.
@@ -170,7 +170,7 @@ object Anagrams {
    */
   def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
     def f(soc: Occurrences, d: Int): List[Sentence] = {
-      p(s"--->$soc")
+//      p(s"--->$soc")
       if(soc.isEmpty) List(List())
       else{
         for{
@@ -203,7 +203,7 @@ object Anagrams {
 //    println(combinations(List(('a', 2), ('b', 2))))
     val lis1 = List(('a', 1), ('b', 4), ('s',2), ('y',2))
     val lis2 = List(('a', 1), ('b', 1), ('y',2))
-//    sentenceAnagrams(s1) foreach p
-    combinations(sentenceOccurrences(s1)) filter(_.size == 5) foreach p
+    sentenceAnagrams(s1) foreach p
+//    combinations(sentenceOccurrences(s1)) filter(_.size == 5) foreach p
   }
 }
