@@ -3,6 +3,9 @@ package forcomp
 
 object Anagrams {
 
+  def p(a: Any): Unit = println(a)
+
+
   /** A word is simply a `String`. */
   type Word = String
 
@@ -62,13 +65,15 @@ object Anagrams {
     dictionary groupBy wordOccurrences
   }
 
-  /** Returns all the anagrams of a given word. */
-  def wordAnagrams(word: Word): List[Word] = {
-    dictionaryByOccurrences.get(wordOccurrences(word)) match {
+  def occurencesWords(occurences: Occurrences): List[Word] = {
+    dictionaryByOccurrences.get(occurences) match {
       case None => List()
       case Some(value) => value
     }
   }
+
+  /** Returns all the anagrams of a given word. */
+  def wordAnagrams(word: Word): List[Word] = occurencesWords(wordOccurrences(word))
 
   /** Returns the list of all subsets of the occurrence list.
    *  This includes the occurrence itself, i.e. `List(('k', 1), ('o', 1))`
@@ -163,19 +168,42 @@ object Anagrams {
    *
    *  Note: There is only one anagram of an empty sentence.
    */
-  def sentenceAnagrams(sentence: Sentence): List[Sentence] = ???
+  def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
+    def f(soc: Occurrences, d: Int): List[Sentence] = {
+      p(s"--->$soc")
+      if(soc.isEmpty) List(List())
+      else{
+        for{
+          oc <- combinations(soc)
+          words <- occurencesWords(oc)
+          roc = subtract(soc, oc)
+          rest <- f(roc, d+1)
+        } yield words :: rest
+      }
+    }
+
+    if(sentence.isEmpty) List(List())
+    else {
+      val soc = sentenceOccurrences(sentence)
+      f(soc, 0)
+    }
+  }
 
   def main(args: Array[String]): Unit = {
     val w1 = "banana"
     val w2 = "elephant"
     val w3 = "art"
-    val phrase1 = "Note: in case that the words of the sentence are in the dictionary, then the sentence is the anagram of itself, so it has to be returned in this list."
-    val s1 = phrase1.split(" ").toList
+//    val phrase1 = "Note: in case that the words of the sentence are in the dictionary, then the sentence is the anagram of itself, so it has to be returned in this list."
+//    val s1 = phrase1.split(" ").toList
 //    val s1 = List("We", "are", "the", "champions")
-//    println(dictionaryByOccurrences(List(('a', 1), ('r', 1), ('t', 1))))
+    val s1 = List("Linux", "rulez")
+//    val s1 = List("Art", "tea")
+//    val s1 = List("yes", "man")
+//    println(dictionaryByOccurrences.get(List(('a', 1), ('a', 1), ('t', 1))))
 //    println(combinations(List(('a', 2), ('b', 2))))
     val lis1 = List(('a', 1), ('b', 4), ('s',2), ('y',2))
     val lis2 = List(('a', 1), ('b', 1), ('y',2))
-    println(subtract(lis1, lis2))
+//    sentenceAnagrams(s1) foreach p
+    combinations(sentenceOccurrences(s1)) filter(_.size == 5) foreach p
   }
 }
