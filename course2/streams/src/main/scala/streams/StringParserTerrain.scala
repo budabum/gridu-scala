@@ -111,7 +111,7 @@ class Aaa extends StringParserTerrain {
   val pos3 = Pos(12,7)
 }
 
-object Main extends App{
+object SPTMain extends App{
   println("START")
   val aaa = new Aaa
   println(aaa.vector)

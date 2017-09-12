@@ -1,16 +1,19 @@
 package streams
 
 import common._
+import org.scalatest.path
 
 /**
  * This component implements the solver for the Bloxorz game
  */
 trait Solver extends GameDef {
 
-  /**
+ /**
    * Returns `true` if the block `b` is at the final position
    */
-  def done(b: Block): Boolean = ???
+  def done(b: Block): Boolean = {
+    b.isStanding && goal.row == b.b1.row && goal.col == b.b1.col
+  }
 
   /**
    * This function takes two arguments: the current block `b` and
@@ -28,7 +31,9 @@ trait Solver extends GameDef {
    * It should only return valid neighbors, i.e. block positions
    * that are inside the terrain.
    */
-  def neighborsWithHistory(b: Block, history: List[Move]): Stream[(Block, List[Move])] = ???
+  def neighborsWithHistory(b: Block, history: List[Move]): Stream[(Block, List[Move])] = {
+    b.legalNeighbors.map { case (blk, m) => (blk, m :: history) }.toStream
+  }
 
   /**
    * This function returns the list of neighbors without the block
@@ -36,7 +41,10 @@ trait Solver extends GameDef {
    * make sure that we don't explore circular paths.
    */
   def newNeighborsOnly(neighbors: Stream[(Block, List[Move])],
-                       explored: Set[Block]): Stream[(Block, List[Move])] = ???
+                       explored: Set[Block]): Stream[(Block, List[Move])] = {
+
+    neighbors filterNot{ case(b, _) => explored.contains(b) }
+  }
 
   /**
    * The function `from` returns the stream of all possible paths
@@ -62,18 +70,31 @@ trait Solver extends GameDef {
    * construct the correctly sorted stream.
    */
   def from(initial: Stream[(Block, List[Move])],
-           explored: Set[Block]): Stream[(Block, List[Move])] = ???
+           explored: Set[Block]): Stream[(Block, List[Move])] = {
+    if(initial.isEmpty) Stream.empty
+    else{
+      val more = for{
+        step <- initial
+        ns = neighborsWithHistory(step._1, step._2)
+        next <- newNeighborsOnly(ns, explored)
+      } yield next
+//      println(more.toList.size)
+      initial ++ from(more, explored ++ more.map{case (b, _) => b})
+    }
+  }
 
   /**
    * The stream of all paths that begin at the starting block.
    */
-  lazy val pathsFromStart: Stream[(Block, List[Move])] = ???
+  lazy val pathsFromStart: Stream[(Block, List[Move])] =
+    from(Stream((startBlock, List())), Set())
 
   /**
    * Returns a stream of all possible pairs of the goal block along
    * with the history how it was reached.
    */
-  lazy val pathsToGoal: Stream[(Block, List[Move])] = ???
+  lazy val pathsToGoal: Stream[(Block, List[Move])] =
+    pathsFromStart filter { case (b, _) => done(b) }
 
   /**
    * The (or one of the) shortest sequence(s) of moves to reach the
@@ -83,5 +104,47 @@ trait Solver extends GameDef {
    * the first move that the player should perform from the starting
    * position.
    */
-  lazy val solution: List[Move] = ???
+  lazy val solution: List[Move] = {
+    val ptg = pathsToGoal.take(1).toList
+    if(ptg.isEmpty) List()
+    else ptg.head._2.reverse
+  }
+}
+
+class Level1 extends GameDef with Solver with StringParserTerrain {
+//  override val level =
+//    """--------
+//      |--SooT--
+//      |--oooo--
+//      |--oooo--
+//      |--oooo--
+//      |--------""".stripMargin
+//  override val level =
+//    """------
+//      |--ST--
+//      |--oo--
+//      |--oo--
+//      |------""".stripMargin
+  val level =
+    """ooo-------
+      |oSoooo----
+      |ooooooooo-
+      |-ooooooooo
+      |-----ooToo
+      |------ooo-""".stripMargin
+
+  def p(a: Any) = println(a)
+
+  def m1: Unit = {
+    val blk = Block(Pos(1,2), Pos(1,2))
+//    from(List((blk, List())).toStream, Set()).take(53).toList foreach p
+    p(pathsToGoal.take(9).toList)
+    p(solution)
+  }
+
+}
+
+object SMain extends App{
+  val level1 = new Level1
+  level1.m1
 }
