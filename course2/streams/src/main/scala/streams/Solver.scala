@@ -1,7 +1,7 @@
 package streams
 
 import common._
-import org.scalatest.path
+//import org.scalatest.path
 
 /**
  * This component implements the solver for the Bloxorz game
