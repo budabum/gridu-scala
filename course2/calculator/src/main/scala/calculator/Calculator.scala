@@ -34,10 +34,37 @@ object Calculator {
     namedExpressions.mapValues(e => Signal(eval(e.apply(), namedExpressions)))
   }
 
+  def dereference(v: String, refs: Map[String, Signal[Expr]], visited: List[String]): Double = {
+    def res = if(refs.contains(v)) refs(v) else Signal(Double.NaN)
+    def deref = getReferenceExpr(v, refs)
+    println("--" * 88)
+    println(v)
+    println(deref)
+    println("==" * 88)
+    deref match {
+      case Literal(x) => x
+      case Ref(z) =>
+        if(v == z || visited.contains(z)) Double.NaN
+        else dereference(z, refs, z :: visited)
+      case _ => Double.NaN
+    }
+  }
+
   def eval(expr: Expr, references: Map[String, Signal[Expr]]): Double = {
     expr match {
       case Literal(x) => x
-      case Ref(v) => eval(getReferenceExpr(v, references), references)
+      case Ref(v) => {
+        if(references.contains(v)){
+          val deref = getReferenceExpr(v, references)
+          val refs = references - v
+          println(v)
+          println(refs)
+          println(deref)
+          println()
+          eval(deref, refs)
+        }
+        else Double.NaN
+      }
       case Plus(a, b) => eval(a, references) + eval(b, references)
       case Minus(a, b) => eval(a, references) - eval(b, references)
       case Times(a, b) => eval(a, references) * eval(b, references)
