@@ -57,10 +57,10 @@ object Calculator {
         if(references.contains(v)){
           val deref = getReferenceExpr(v, references)
           val refs = references - v
-          println(v)
-          println(refs)
-          println(deref)
-          println()
+//          println(v)
+//          println(refs)
+//          println(deref)
+//          println()
           eval(deref, refs)
         }
         else Double.NaN
