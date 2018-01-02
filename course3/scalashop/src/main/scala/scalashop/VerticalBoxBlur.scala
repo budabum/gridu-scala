@@ -3,6 +3,8 @@ package scalashop
 import org.scalameter._
 import common._
 
+import scala.collection.mutable.ListBuffer
+
 object VerticalBoxBlurRunner {
 
   val standardConfig = config(
@@ -43,8 +45,10 @@ object VerticalBoxBlur {
    *  bottom.
    */
   def blur(src: Img, dst: Img, from: Int, end: Int, radius: Int): Unit = {
-    // TODO implement this method using the `boxBlurKernel` method
-    ???
+    for {
+      x <- from until end
+      y <- 0 until src.height
+    } dst.update(x, y, boxBlurKernel(src, x, y, radius))
   }
 
   /** Blurs the columns of the source image in parallel using `numTasks` tasks.
@@ -54,8 +58,32 @@ object VerticalBoxBlur {
    *  columns.
    */
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
-    // TODO implement using the `task` construct and the `blur` method
-    ???
+    val lb: ListBuffer[(Int, Int)] = ListBuffer()
+    val w = src.width
+    val n = numTasks
+    for {
+      x <- 0 to w by n
+      if x <= w
+    } lb += ((x, if(x+n <= w) x+n else w))
+
+    lb.toVector.par.foreach(n => blur(src, dst, n._1, n._2, radius))
   }
 
+}
+
+object main extends App {
+  import VerticalBoxBlur._
+
+  val w = 3
+  val h = 3
+  val src = fillImg(w, h)
+  val dst1 = new Img(w, h)
+  val dst2 = new Img(w, h)
+
+  blur(src, dst1, 0, w, 1)
+  parBlur(src, dst2, 3, 1)
+
+  printImg(src)
+  printImg(dst1)
+  printImg(dst2)
 }
