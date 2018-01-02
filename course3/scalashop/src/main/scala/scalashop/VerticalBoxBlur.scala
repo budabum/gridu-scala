@@ -74,8 +74,8 @@ object VerticalBoxBlur {
 object main extends App {
   import VerticalBoxBlur._
 
-  val w = 3
-  val h = 3
+  val w = 1000
+  val h = 1000
   val src = fillImg(w, h)
   val dst1 = new Img(w, h)
   val dst2 = new Img(w, h)
