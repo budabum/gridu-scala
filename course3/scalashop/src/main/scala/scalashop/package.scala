@@ -1,6 +1,8 @@
 
 import common._
 
+import scalashop.{Img, RGBA}
+
 package object scalashop {
 
   /** The value of every pixel is represented as a 32 bit integer. */
@@ -43,4 +45,39 @@ package object scalashop {
     ???
   }
 
+}
+
+object main extends App{
+  def rgbaArr(rgba: RGBA): List[Int] = {
+    List(
+      scalashop.red(rgba),
+      scalashop.green(rgba),
+      scalashop.blue(rgba),
+      scalashop.alpha(rgba)
+    )
+  }
+
+  def printImg(img: Img): Unit ={
+    for {
+      x <- 0 until w
+      y <- 0 until h
+      s = if(y == h-1) "\n" else " "
+    } print(rgbaArr(img.apply(x, y)) + s)
+//    } print(x + ":" + y + "\n")
+    println()
+  }
+
+  println("START")
+  val w:Int = 3
+  val h:Int = 3
+  val img = new Img(w,h)
+  for {
+    x <- 0 until w
+    y <- 0 until h
+    v = 32 * (x + 1) + y
+    c = scalashop.rgba(v, v, v, v)
+  } img.update(x, y, c)
+  printImg(img)
+//  println(rgbaArr(0x10101010))
+  println("FINISH")
 }
