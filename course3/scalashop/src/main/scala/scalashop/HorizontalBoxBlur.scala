@@ -1,5 +1,7 @@
 package scalashop
 
+import java.util.concurrent.ForkJoinTask
+
 import org.scalameter._
 import common._
 
@@ -50,12 +52,38 @@ object HorizontalBoxBlur {
     } dst.update(x, y, boxBlurKernel(src, x, y, radius))
   }
 
+  def parallel2(tasks: Seq[ForkJoinTask[Unit]]): Unit = {
+    if(tasks.isEmpty) return
+    if(tasks.size > 1){
+      def t0 = tasks.head
+      def t1 = tasks.tail.head
+      parallel(t0, t1)
+      parallel2(tasks.tail.tail)
+    }
+    else{
+      def t0 = tasks.head
+      t0.invoke()
+    }
+  }
   /** Blurs the rows of the source image in parallel using `numTasks` tasks.
    *
    *  Parallelization is done by stripping the source image `src` into
    *  `numTasks` separate strips, where each strip is composed of some number of
    *  rows.
    */
+  def parBlur2(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
+    val lb: ListBuffer[(Int, Int)] = ListBuffer()
+    val h = src.height
+    val n = numTasks
+    for {
+      y <- 0 to h by n
+      if y <= h
+    } lb += ((y, if(y+n <= h) y+n else h))
+
+    val tasks: Seq[ForkJoinTask[Unit]] = lb.map(n => task {blur(src, dst, n._1, n._2, radius)})
+    parallel2(tasks)
+  }
+
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
     val lb: ListBuffer[(Int, Int)] = ListBuffer()
     val h = src.height
@@ -63,7 +91,7 @@ object HorizontalBoxBlur {
     for {
       y <- 0 to h by n
       if y <= h
-    } lb += ((y, if(y+n <= h) y+n else y))
+    } lb += ((y, if(y+n <= h) y+n else h))
 
     lb.toVector.par.foreach(n => blur(src, dst, n._1, n._2, radius))
   }

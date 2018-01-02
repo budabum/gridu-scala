@@ -1,9 +1,12 @@
 package scalashop
 
+import java.util.concurrent.ForkJoinTask
+
 import org.scalameter._
 import common._
 
 import scala.collection.mutable.ListBuffer
+import scala.collection.parallel.ForkJoinTasks
 
 object VerticalBoxBlurRunner {
 
@@ -51,12 +54,35 @@ object VerticalBoxBlur {
     } dst.update(x, y, boxBlurKernel(src, x, y, radius))
   }
 
+  def parallel2(tasks: Seq[ForkJoinTask[Unit]]): Unit = {
+    if(tasks.isEmpty) return
+    if(tasks.size > 1){
+      def t0 = tasks.head
+      parallel(t0, task {parallel2(tasks.tail)})
+    }
+    else{
+      tasks.head.invoke()
+    }
+  }
   /** Blurs the columns of the source image in parallel using `numTasks` tasks.
    *
    *  Parallelization is done by stripping the source image `src` into
    *  `numTasks` separate strips, where each strip is composed of some number of
    *  columns.
    */
+  def parBlur2(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
+    val lb: ListBuffer[(Int, Int)] = ListBuffer()
+    val w = src.width
+    val n = numTasks
+    for {
+      x <- 0 to w by n
+      if x <= w
+    } lb += ((x, if(x+n <= w) x+n else w))
+
+    val tasks: Seq[ForkJoinTask[Unit]] = lb.map(n => task {blur(src, dst, n._1, n._2, radius)}).toSeq
+    parallel2(tasks)
+  }
+
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
     val lb: ListBuffer[(Int, Int)] = ListBuffer()
     val w = src.width
@@ -69,19 +95,34 @@ object VerticalBoxBlur {
     lb.toVector.par.foreach(n => blur(src, dst, n._1, n._2, radius))
   }
 
+  def parBlur1(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
+    val lb: ListBuffer[(Int, Int)] = ListBuffer()
+    val w = src.width
+    val n = w / numTasks
+    for {
+      x <- 0 until w by n
+      if x <= w
+    } lb += ((x, if(x+n <= w) x+n else w))
+
+    println(lb)
+    println(lb.size)
+
+    lb.toVector.par.foreach(n => task{blur(src, dst, n._1, n._2, radius)}.invoke())
+  }
+
 }
 
 object main extends App {
   import VerticalBoxBlur._
 
-  val w = 1000
-  val h = 1000
+  val w = 8
+  val h = 8
   val src = fillImg(w, h)
   val dst1 = new Img(w, h)
   val dst2 = new Img(w, h)
 
-  blur(src, dst1, 0, w, 1)
-  parBlur(src, dst2, 3, 1)
+  blur(src, dst1, 0, w, 2)
+  parBlur(src, dst2, 4, 2)
 
   printImg(src)
   printImg(dst1)
